@@ -1,3 +1,5 @@
+@echo off
+
 REM Change python whatever 
 set pyexe=python34\python.exe
 
