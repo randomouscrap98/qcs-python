@@ -1,6 +1,7 @@
 
 import requests
 import logging
+import json
 
 class AuthenticationError(Exception):
     """ Exception for 401 errors, meaning your token was bad (expired maybe?) """
@@ -12,6 +13,14 @@ class BadRequestError(Exception):
 class NotFoundError(Exception):
     """Exception for 404 errors, meaning whatever you were looking for wasn't found
        (This is rare from the API) """
+
+# Given a normal result set for users, find the user by id or return some reasonable default
+def get_user_or_default(users, id):
+    for u in users:
+        if "id" in u and u["id"] == id:
+            return u
+    return { "id" : id, "username" : "???", "avatar": "0" }
+
 
 # Your gateway to the static endpoints for contentapi. It's a context because it needs
 # to track stuff like "which api am I contacting" and "which user am I authenticating as (if any)"
@@ -84,6 +93,18 @@ class ApiContext:
             self.logger.debug("Error from endpoint: %s" % ex)
             return False
 
+    # Generate a completely ready websocket request (for data). You can write the result directly to the websocket
+    def gen_ws_request(self, type, data = None, id = None):
+        request = {
+            "type" : type
+        }
+        if data:
+            request["data"] = data
+        if id:
+            request["id"] = id
+        return json.dumps(request)
+
+    
 
     # Return info about the current user based on the token. Useful to see if your token is valid
     # and who you are

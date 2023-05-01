@@ -31,13 +31,15 @@ config = {
     "tokenfile" : ".qcstoken"
 }
 
+# The command dictionary (only used to display help)
 commands = OrderedDict([
-    ("h" , "Help, prints this menu!"),
-    ("s" , "Search, find and/or set a room to listen to (one at a time!)"),
-    ("g" , "Global userlist, print users using contentapi in general"),
-    ("u" , "Userlist, print users in the current room"),
-    ("i" , "Insert mode, allows you to send a message (pauses messages!)"),
-    ("q" , "Quit, no warning!")
+    ("h", "Help, prints this menu!"),
+    ("s", "Search, find and/or set a room to listen to (one at a time!)"),
+    ("g", "Global userlist, print users using contentapi in general"),
+    ("u", "Userlist, print users in the current room"),
+    ("i", "Insert mode, allows you to send a message (pauses messages!)"),
+    ("t", "Statistics, see info about runtime"),
+    ("q", "Quit, no warning!")
 ])
 
 
@@ -76,6 +78,7 @@ def main():
     ws.main_config = config
     ws.current_room = 0
     ws.current_room_data = False
+    ws.ignored = {}
 
     # Go out and get the default room if one was provided.
     if config["default_room"]:
@@ -91,7 +94,6 @@ def main():
     ws.on_close = ws_onclose
     ws.on_message = ws_onmessage
 
-    # connect to the WebSocket server and block until connected
     ws.run_forever()
 
     print("Program end")
@@ -104,19 +106,20 @@ def ws_onclose(ws):
 def ws_onopen(ws):
 
     def main_loop():
-        printstatus = True
 
         printr(Fore.GREEN + Style.BRIGHT + "\n-- Connected to live updates! --")
 
         if not ws.current_room:
             printr(Fore.YELLOW + "* You are not connected to any room! Press 'S' to search for a room! *")
 
+        printstatus = True
+
         # The infinite input loop! Or something!
         while True:
             if printstatus:
                 print_statusline(ws)
 
-            printstatus = True          # Allow printing the statusline next time
+            printstatus = False         # Assume we are not printing the status every time (it's kinda annoying)
             ws.pause_output = False     # Allow arbitrary output again
             key = readchar.readkey()
 
@@ -132,32 +135,65 @@ def ws_onopen(ws):
                     print(" " + Style.BRIGHT + key + Style.NORMAL + " - " + value)
             elif key == "s":
                 search(ws)
+                printstatus = True
             elif key == "g":
-                print("not yet")
+                ws.send(ws.context.gen_ws_request("userlist", id = "userlist_global"))
             elif key == "u":
                 if not ws.current_room:
                     print("You're not in a room! Can't check userlist!")
                 else:
-                    print("not yet")
+                    # Just send it out, we have to wait for the websocket handler to get the response
+                    ws.send(ws.context.gen_ws_request("userlist", id = "userlist_room_%d" % ws.current_room))
             elif key == "i":
                 if not ws.current_room:
                     print("You're not in a room! Can't send messages!")
                 else:
                     print("not yet")
+                printstatus = True
+            elif key == "t":
+                print(" -- Ignored WS Data (normal) --")
+                for key,value in ws.ignored.items():
+                    printr(Style.BRIGHT + ("%16s" % key) + (" : %d" % value))
             elif key == "q":
                 print("Quitting (may take a bit for the websocket to close)")
                 ws.close()
                 break
-            else:
-                printstatus = False
 
     # create a thread to run the blocking task
     thread = threading.Thread(target=main_loop)
     thread.start()
 
-
+# Message handler for our websocket; will handle live messages for the room you're listening to and 
+# userlist updates request results, but not much else (for now)
 def ws_onmessage(ws, message):
-    pass
+    logging.debug("WSRCV: " + message)
+    result = json.loads(message)
+
+    # Someone asked for the userlist, check the id to figure out what to print and which list to see
+    if result["type"] == "userlist":
+        all_statuses = result["data"]["statuses"]
+        if result["id"] == "userlist_global":
+            usermessage = " -- Global userlist --"
+            statuses = all_statuses["0"] if "0" in all_statuses else {}
+        else: # This is a bad assumption, it should parse the room id out of the id instead (maybe?)
+            usermessage = " -- Userlist for %s -- " % ws.current_room_data["name"]
+            statuses = all_statuses[str(ws.current_room)] if str(ws.current_room) in all_statuses else {}
+        print(usermessage)
+        print_userlist(statuses, result["data"]["objects"]["user"])
+
+    # Track ignored data
+    if result["type"] not in ws.ignored:
+        ws.ignored[result["type"]] = 0
+    ws.ignored[result["type"]] += 1
+
+# Print the plain userlist given a list of statuses (in a room or otherwise) and a list of user data
+# (usually provided by whatever gave you the statuses)
+def print_userlist(statuses, users):
+    for key,value in statuses.items():
+        key = int(key)
+        user = contentapi.get_user_or_default(users,key)
+        # Weird parenthesis are because I was aligning printed data before
+        printr(Style.BRIGHT + "  " + ("%s" % (user["username"] + Style.DIM + " #%d" % key)) + Style.RESET_ALL + " - " + value)
 
 
 # Loads the config from file into the global config var. If the file
@@ -245,7 +281,7 @@ def print_statusline(ws):
         room = "'" + (name[:(MAXTITLE - 3)] + '...' if len(name) > MAXTITLE else name) + "'"
     else:
         room = Fore.RED + Style.DIM + "NONE" + Style.NORMAL + Fore.BLACK
-    print(Back.GREEN + Fore.BLACK + "\n " + ws.user_info["username"] + " - " + room + "  CTRL: h s g u i q  " + Style.RESET_ALL)
+    print(Back.GREEN + Fore.BLACK + "\n " + ws.user_info["username"] + " - " + room + "  CTRL: h s g u i t q  " + Style.RESET_ALL)
 
 # Print and then reset the style
 def printr(msg):
