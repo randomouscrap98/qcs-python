@@ -22,7 +22,7 @@ MAXTITLE=25
 
 # The entire config object with all defaults
 config = {
-    "api" : "https://oboy.smilebasicsource.com/api",
+    "api" : "http://localhost:5000/api",
     "default_loglevel" : "WARNING",
     "websocket_trace" : False,
     "default_room" : 0, # Zero means it will ask you for a room

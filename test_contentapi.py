@@ -6,10 +6,11 @@ import logging
 class TestContentapi(unittest.TestCase):
 
     def setUp(self) -> None:
-        # MAYBE change all these some time? Should connect to a local instance!!
-        self.api = contentapi.ApiContext("https://oboy.smilebasicsource.com/api", logging)
-        self.known_content_id = 384
-        self.known_name = "Megathread"
+        # Requires some local setup. This data points to the SBS instance you usually run to
+        # test the SBS frontend (contentapi_copy)
+        self.api = contentapi.ApiContext("http://localhost:5000/api", logging)
+        self.known_content_id = 15050 # 384
+        self.known_name = "Big Dumb" # "Megathread"
 
     def test_apistatus(self):
         result = self.api.api_status()
