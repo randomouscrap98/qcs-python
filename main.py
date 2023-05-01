@@ -57,8 +57,8 @@ def authenticate(config, context: contentapi.ApiContext):
         with open(config["tokenfile"], 'r') as f:
             token = f.read()
         logging.debug("Token from file: " + token)
-        if context.is_token_valid(token):
-            context.token = token
+        context.token = token
+        if context.is_token_valid():
             logging.info("Logged in using token file " + config["tokenfile"])
             return
         else:

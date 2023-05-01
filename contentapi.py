@@ -34,7 +34,7 @@ class ApiContext:
             "Accept" : content_type
         }
         if self.token:
-            headers["Authorization"] = "Bearer" + self.token
+            headers["Authorization"] = "Bearer " + self.token
         return headers
     
     # Given a standard response from the API, parse the status code to throw the appropriate
@@ -67,11 +67,9 @@ class ApiContext:
 
     # Connect to the API to determine if your token is still valid. Or, if you pass a token,
     # check if only the given token is valid
-    def is_token_valid(self, token = False):
-        if not token:
-            token = self.token
+    def is_token_valid(self):
         try:
-            return token and self.get("user/me")
+            return self.token and self.get("user/me")
         except Exception as ex:
             self.logger.debug("Error from endpoint: %s" % ex)
             return False
