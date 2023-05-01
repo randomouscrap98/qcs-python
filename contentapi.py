@@ -34,7 +34,7 @@ class ApiContext:
             "Content-Type" : content_type
         }
         if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
+            headers["Authorization"] = "Bearer" + self.token
         return headers
     
     # Given a standard response from the API, parse the status code to throw the appropriate
@@ -43,13 +43,13 @@ class ApiContext:
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 400:
-            raise BadRequestError(f"Bad request: {response.content}")
+            raise BadRequestError(format("Bad request: {}", response.content))
         elif response.status_code == 401:
             raise AuthenticationError("Your token is bad!")
         elif response.status_code == 404:
             raise NotFoundError("Could not find content!")
         else:
-            raise Exception(f"Unknown error ({response.status_code}) - {response.content}")
+            raise Exception(format("Unknown error ({}) - {}", response.status_code, response.content))
     
     # Perform a standard get request and return the pre-parsed object (all contentapi endpoints
     # return objects). Throws exception on error
@@ -62,6 +62,6 @@ class ApiContext:
         try:
             return self.token and self.get("user/me")
         except Exception as ex:
-            self.logger.debug(f"Error from endpoint: {ex}")
+            self.logger.debug(format("Error from endpoint: {}", ex))
             return False
 
