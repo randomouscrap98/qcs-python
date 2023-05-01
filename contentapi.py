@@ -104,10 +104,11 @@ class ApiContext:
     def api_status(self):
         return self.get("status")
     
+    # Access the raw search endpoint of the API (you must construct the special contentapi request yourself!)
     def search(self, requests):
         return self.post("request", requests)
     
-    # A very basic search for outputting to the console. Many assumptions are made!
+    # A very basic search for outputting to the console. Constructs the contentapi search request for you: many assumptions are made!
     def basic_search(self, searchterm, limit = 0):
         return self.search({
             "values": {

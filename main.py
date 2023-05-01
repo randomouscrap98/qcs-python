@@ -9,6 +9,7 @@ import re
 import toml 
 import readchar
 import websocket
+import win_unicode_console
 
 from collections import OrderedDict
 from colorama import Fore, Back, Style, init as colorama_init
@@ -17,6 +18,7 @@ import contentapi
 import myutils
 
 CONFIGFILE="config.toml"
+MAXTITLE=25
 
 # The entire config object with all defaults
 config = {
@@ -42,6 +44,7 @@ commands = OrderedDict([
 def main():
 
     print("Program start")
+    win_unicode_console.enable()
     colorama_init() # colorama init
 
     load_or_create_global_config()
@@ -66,12 +69,22 @@ def main():
 
     ws = websocket.WebSocketApp(context.websocket_endpoint())
     # Might as well reuse the websocket object for my websocket context data (oops, is that bad?)
+    ws.context = context
     ws.user_info = context.user_me()
-    ws.current_room = config["default_room"]
-    ws.current_room_data = False
     ws.pause_output = False # Whether all output from the websocket should be paused (including status updates)
     ws.output_buffer = [] # Individual print statements buffered from output. 
     ws.main_config = config
+    ws.current_room = 0
+    ws.current_room_data = False
+
+    # Go out and get the default room if one was provided.
+    if config["default_room"]:
+        try:
+            ws.current_room_data = context.get_by_id("content", config["default_room"])
+            ws.current_room = config["default_room"]
+            printr(Fore.GREEN + "Found default room %s" % ws.current_room_data["name"])
+        except Exception as ex:
+            printr(Fore.YELLOW + "Error searching for default room %d: %s" % (config["default_room"], ex))
 
     # set the callback functions
     ws.on_open = ws_onopen
@@ -93,11 +106,10 @@ def ws_onopen(ws):
     def main_loop():
         printstatus = True
 
-        print(Fore.GREEN + Style.BRIGHT + "\n-- Connected to live updates! --" + Style.RESET_ALL)
+        printr(Fore.GREEN + Style.BRIGHT + "\n-- Connected to live updates! --")
 
-        # TODO: check to see if the id is a valid room
         if not ws.current_room:
-            print(Fore.YELLOW + "* You are not connected to any room! Press 'S' to search for a room! *" + Style.RESET_ALL)
+            printr(Fore.YELLOW + "* You are not connected to any room! Press 'S' to search for a room! *")
 
         # The infinite input loop! Or something!
         while True:
@@ -176,10 +188,22 @@ def search(ws):
             return
         match = re.match(r'#(\d+)', searchterm)
         if match:
-            digits = int(match.group(1))
-            
-            num = int(digits)
-            print(num)
+            roomid = int(match.group(1))
+            try:
+                ws.current_room_data = ws.context.get_by_id("content", roomid)
+                ws.current_room = roomid
+                print(Fore.GREEN + "Set room to %s" % ws.current_room_data["name"] + Style.RESET_ALL)
+                return
+            except Exception as ex:
+                print(Fore.RED + "Couldn't find room with id %d" % roomid + Style.RESET_ALL)
+        elif searchterm:
+            # Go search for rooms and display them
+            result = ws.context.basic_search(searchterm)["objects"]["content"]
+            if len(result):
+                for content in result:
+                    printr(Style.BRIGHT + "%7s" % ("#%d" % content["id"]) + Style.RESET_ALL + " - %s" % content["name"])
+            else:
+                printr(Style.DIM + " -- No results -- ")
 
 # Either pull the token from a file, or get the login from the command
 # line if that doesn't work. WILL test your token against the real API
@@ -218,10 +242,14 @@ def print_statusline(ws):
     # if ws_context.connected: bg = Back.GREEN else: bg = Back.RED
     if ws.current_room:
         name = ws.current_room_data["name"]
-        room = "'" + (name[:12] + '...' if len(name) > 15 else name) + "'"
+        room = "'" + (name[:(MAXTITLE - 3)] + '...' if len(name) > MAXTITLE else name) + "'"
     else:
         room = Fore.RED + Style.DIM + "NONE" + Style.NORMAL + Fore.BLACK
     print(Back.GREEN + Fore.BLACK + "\n " + ws.user_info["username"] + " - " + room + "  CTRL: h s g u i q  " + Style.RESET_ALL)
+
+# Print and then reset the style
+def printr(msg):
+    print(msg + Style.RESET_ALL)
 
 # Because python reasons
 if __name__ == "__main__":
