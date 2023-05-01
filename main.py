@@ -56,15 +56,18 @@ def authenticate(config, context: contentapi.ApiContext):
     if os.path.isfile(config["tokenfile"]):
         with open(config["tokenfile"], 'r') as f:
             token = f.read()
-        if context.is_token_valid():
+        logging.debug("Token from file: " + token)
+        if context.is_token_valid(token):
             context.token = token
             logging.info("Logged in using token file " + config["tokenfile"])
             return
         else:
             message = "Token file expired"
     
+    message += ", Please enter login for " + config["api"]
+
     while True:
-        print(message + ", Please enter login for " + config["api"])
+        print(message)
         username = input("Username: ")
         password = getpass.getpass("Password: ")
         try:
@@ -73,8 +76,10 @@ def authenticate(config, context: contentapi.ApiContext):
                 f.write(token)
             logging.info("Token accepted, written to " + config["tokenfile"])
             context.token = token
+            return
         except Exception as ex:
-            print("ERROR: Could not login: %s" % ex)
+            print("ERROR: %s" % ex)
+            message = "Please try logging in again:"
 
 
 # Because python reasons

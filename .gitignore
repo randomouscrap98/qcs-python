@@ -2,3 +2,4 @@ python34/
 junk/
 __pycache__/
 config.toml
+.qcstoken

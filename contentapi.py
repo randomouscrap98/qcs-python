@@ -43,11 +43,11 @@ class ApiContext:
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 400:
-            raise BadRequestError("Bad request: %s" % response.content)
+            raise BadRequestError("Bad request: %s" % response.text)
         elif response.status_code == 401:
             raise AuthenticationError("Your token is bad!")
         elif response.status_code == 404:
-            raise NotFoundError("Could not find content!")
+            raise NotFoundError("Not found: %s" % response.text)
         else:
             raise Exception("Unknown error (%s) - %s" % (response.status_code, response.content))
     
@@ -65,10 +65,13 @@ class ApiContext:
         response = requests.post(url, headers = self.gen_header(), json = data)
         return self.parse_response(response)
 
-    # Connect to the API to determine if your token is still valid. 
-    def is_token_valid(self):
+    # Connect to the API to determine if your token is still valid. Or, if you pass a token,
+    # check if only the given token is valid
+    def is_token_valid(self, token = False):
+        if not token:
+            token = self.token
         try:
-            return self.token and self.get("user/me")
+            return token and self.get("user/me")
         except Exception as ex:
             self.logger.debug("Error from endpoint: %s" % ex)
             return False
