@@ -11,6 +11,7 @@ CONFIGFILE="config.toml"
 # The entire config object with all defaults
 config = {
     "api" : "https://oboy.smilebasicsource.com/api",
+    "default_loglevel" : "WARNING",
     "expire_seconds" : 31536000, # 365 days in seconds, expiration for token
     "tokenfile" : ".qcstoken"
 }
@@ -18,7 +19,7 @@ config = {
 def main():
     print("Program start")
     load_or_create_global_config()
-    logging.debug("Config: " + json.dumps(config, indent = 2))
+    logging.info("Config: " + json.dumps(config, indent = 2))
     context = contentapi.ApiContext(config["api"], logging)
     print("Program end")
 
@@ -31,12 +32,15 @@ def load_or_create_global_config():
     if os.path.exists(CONFIGFILE):
         # Read and deserialize the config file
         with open(CONFIGFILE, 'r', encoding='utf-8') as f:
-            config = toml.load(f)
+            temp_config = toml.load(f)
+            myutils.merge_dictionary(temp_config, config)
     else:
         # Serialize and write the config dictionary to the config file
         logging.warn("No config found at " + CONFIGFILE + ", creating now")
         with open(CONFIGFILE, 'w', encoding='utf-8') as f:
             toml.dump(config, f)
+
+    myutils.set_logging_level(config["default_loglevel"])
 
 
 # Because python reasons
