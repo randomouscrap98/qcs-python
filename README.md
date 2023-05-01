@@ -14,6 +14,8 @@ Because of the unique requirements given to me, this isn't setup like a normal p
 - You need to manually download the required pip packages, which are listed in `setup.bat`
 - This was not setup to run with a virtual environment (but you're free to change that)
 - Run `main.py` for the whole thing. `run.bat` is for me, the developer, there's nothing you need from there
+- It will fail the first time you run it, this is because the API endpoint is bogus. After running the first time,
+  it'll generate a config file you can edit, change the API endpoint and then it should work
 
 The list of required pip packages is listed in `setup.bat`. If you're on windows, feel free to run that yourself, just know that the default is to use a 
 local python 3.4 installation in a specific folder; you'll need to change that. Furthermore, we don't specify versions for most of these, so we assume
