@@ -51,8 +51,6 @@ def main():
     logging.debug(json.dumps(context.api_status(), indent = 2))
     authenticate(config, context)
 
-    # - Connect to websocket, be ready to receive junk
-    # - Alert user they're not connected to any room, maybe have a status line that lists controls + room
     # - Enter input loop, but check room number on "input" mode, don't let messages send in room 0
     #   - h to help
     #   - s to search rooms, enter #1234 to connect directly, empty string to quit
@@ -74,18 +72,14 @@ def main():
     ws.main_config = config
 
     # set the callback functions
-    # ws.on_open = on_open
     ws.on_open = ws_onopen
     ws.on_close = ws_onclose
     ws.on_message = ws_onmessage
 
     # connect to the WebSocket server and block until connected
     ws.run_forever()
-    
-    # TODO: Will the websocket end if the program just ends?
 
     print("Program end")
-
 
 
 def ws_onclose(ws):
@@ -96,6 +90,12 @@ def ws_onopen(ws):
 
     def main_loop():
         printstatus = True
+
+        print(Fore.GREEN + Style.BRIGHT + "\n-- Connected to live updates! --" + Style.RESET_ALL)
+
+        # TODO: check to see if the id is a valid room
+        if not ws.current_room:
+            print(Fore.YELLOW + "* You are not connected to any room! Press 'S' to search for a room! *" + Style.RESET_ALL)
 
         # The infinite input loop! Or something!
         while True:
@@ -117,10 +117,17 @@ def ws_onopen(ws):
             elif key == "g":
                 print("not yet")
             elif key == "u":
-                print("not yet")
+                if not ws.current_room:
+                    print("You're not in a room! Can't check userlist!")
+                else:
+                    print("not yet")
             elif key == "i":
-                print("not yet")
+                if not ws.current_room:
+                    print("You're not in a room! Can't send messages!")
+                else:
+                    print("not yet")
             elif key == "q":
+                print("Quitting (may take a bit for the websocket to close)")
                 ws.close()
                 break
             else:
