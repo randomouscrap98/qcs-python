@@ -4,12 +4,14 @@ import json
 import logging
 import contentapi
 import toml
+import myutils
 
 CONFIGFILE="config.toml"
 
 # The entire config object with all defaults
 config = {
     "api" : "https://oboy.smilebasicsource.com/api",
+    "expire_seconds" : 31536000, # 365 days in seconds, expiration for token
     "tokenfile" : ".qcstoken"
 }
 
