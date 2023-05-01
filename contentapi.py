@@ -69,11 +69,16 @@ class ApiContext:
     # check if only the given token is valid
     def is_token_valid(self):
         try:
-            return self.token and self.get("user/me")
+            return self.token and self.user_me()
         except Exception as ex:
             self.logger.debug("Error from endpoint: %s" % ex)
             return False
 
+
+    # Return info about the current user based on the token. Useful to see if your token is valid
+    # and who you are
+    def user_me(self):
+        return self.get("user/me")
 
     # Basic login endpoint, should return your token on success
     def login(self, username, password, expire_seconds = False):
