@@ -183,6 +183,7 @@ def ws_onmessage(ws, message):
             statuses = all_statuses[str(ws.current_room)] if str(ws.current_room) in all_statuses else {}
         print(usermessage)
         print_userlist(statuses, result["data"]["objects"]["user"])
+        return
 
     # Track ignored data
     if result["type"] not in ws.ignored:
