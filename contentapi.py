@@ -26,6 +26,16 @@ class ApiContext:
         self.token = token
     
 
+    # Contentapi websocket endpoint is always wss, and we assume the websocket is always secure too.
+    # If these are not reasonable assumptions... I guess make a regex replacement instead?
+    def websocket_endpoint(self, lastId = 0):
+        if not self.token:
+            raise Exception("Cannot connect to websocket endpoint without token!!")
+        result = self.endpoint.replace("https:", "wss:") + "/live/ws?token=%s" % self.token
+        if lastId:
+            result += "&lastId=%d" % lastId
+        return result
+
     # Generate the standard headers we use for most requests. You usually don't need to
     # change anything here, just make sure your token is set if you want to be logged in
     def gen_header(self, content_type = "application/json"):
