@@ -131,8 +131,9 @@ def ws_onopen(ws):
             ws.pause_output = True      # Disable output for the duration of input handling
 
             if key == "h":
+                print(" -- Help menu / Controls --")
                 for key, value in commands.items():
-                    print(" " + Style.BRIGHT + key + Style.NORMAL + " - " + value)
+                    print("  " + Style.BRIGHT + key + Style.NORMAL + " - " + value)
             elif key == "s":
                 search(ws)
                 printstatus = True
@@ -158,6 +159,8 @@ def ws_onopen(ws):
                 print("Quitting (may take a bit for the websocket to close)")
                 ws.close()
                 break
+            elif key == " ":
+                printstatus = True
 
     # create a thread to run the blocking task
     thread = threading.Thread(target=main_loop)
