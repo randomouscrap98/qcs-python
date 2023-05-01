@@ -2,8 +2,10 @@
 import os
 import json
 import logging
-import contentapi
 import toml
+import getpass
+
+import contentapi
 import myutils
 
 CONFIGFILE="config.toml"
@@ -21,6 +23,9 @@ def main():
     load_or_create_global_config()
     logging.info("Config: " + json.dumps(config, indent = 2))
     context = contentapi.ApiContext(config["api"], logging)
+    logging.info("Testing connection to API at " + config["api"])
+    logging.debug(json.dumps(context.api_status(), indent = 2))
+    authenticate(config, context)
     print("Program end")
 
 # Loads the config from file into the global config var. If the file
@@ -29,7 +34,7 @@ def main():
 def load_or_create_global_config():
     global config
     # Check if the config file exists
-    if os.path.exists(CONFIGFILE):
+    if os.path.isfile(CONFIGFILE):
         # Read and deserialize the config file
         with open(CONFIGFILE, 'r', encoding='utf-8') as f:
             temp_config = toml.load(f)
@@ -41,6 +46,35 @@ def load_or_create_global_config():
             toml.dump(config, f)
 
     myutils.set_logging_level(config["default_loglevel"])
+
+
+# Either pull the token from a file, or get the login from the command
+# line if that doesn't work. WILL test your token against the real API
+# even if it's pulled from file!
+def authenticate(config, context: contentapi.ApiContext):
+    message = "No token file found"
+    if os.path.isfile(config["tokenfile"]):
+        with open(config["tokenfile"], 'r') as f:
+            token = f.read()
+        if context.is_token_valid():
+            context.token = token
+            logging.info("Logged in using token file " + config["tokenfile"])
+            return
+        else:
+            message = "Token file expired"
+    
+    while True:
+        print(message + ", Please enter login for " + config["api"])
+        username = input("Username: ")
+        password = getpass.getpass("Password: ")
+        try:
+            token = context.login(username, password, config["expire_seconds"])
+            with open(config["tokenfile"], 'w') as f:
+                f.write(token)
+            logging.info("Token accepted, written to " + config["tokenfile"])
+            context.token = token
+        except Exception as ex:
+            print("ERROR: Could not login: %s" % ex)
 
 
 # Because python reasons
