@@ -103,3 +103,40 @@ class ApiContext:
     # Get information about the API. Very useful to test your connection to the API
     def api_status(self):
         return self.get("status")
+    
+    def search(self, requests):
+        return self.post("request", requests)
+    
+    # A very basic search for outputting to the console. Many assumptions are made!
+    def basic_search(self, searchterm, limit = 0):
+        return self.search({
+            "values": {
+                "searchterm": searchterm,
+                "searchtermlike": "%" + searchterm + "%"
+            },
+            "requests": [{
+                "type": "content",
+                "fields": "~text,engagement", # All fields EXCEPT text and engagement
+                "query": "name LIKE @searchtermlike",
+                "order": "lastActionDate_desc",
+                "limit": limit
+            }]
+        })
+    
+    # Return the singular item of 'type' for the given ID. Raises a "NotFoundError" if nothing found.
+    def get_by_id(self, type, id, fields = "*"):
+        result = self.search({
+            "values" : {
+                "id" : id
+            },
+            "requests": [{
+                "type" : type,
+                "fields": fields,
+                "query": "id = @id"
+            }]
+        })
+
+        things = result["objects"][type]
+        if not len(things):
+            raise NotFoundError("Couldn't find %s with id %d" % (type, id))
+        return things[0]

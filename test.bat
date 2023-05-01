@@ -5,3 +5,4 @@ set pyexe=python34\python.exe
 
 REM And now, run all the various tests we have
 %pyexe% test_myutils.py
+%pyexe% test_contentapi.py

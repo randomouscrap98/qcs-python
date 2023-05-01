@@ -5,6 +5,7 @@ import logging
 import getpass
 import textwrap
 import threading
+import re
 import toml 
 import readchar
 import websocket
@@ -67,6 +68,7 @@ def main():
     # Might as well reuse the websocket object for my websocket context data (oops, is that bad?)
     ws.user_info = context.user_me()
     ws.current_room = config["default_room"]
+    ws.current_room_data = False
     ws.pause_output = False # Whether all output from the websocket should be paused (including status updates)
     ws.output_buffer = [] # Individual print statements buffered from output. 
     ws.main_config = config
@@ -101,7 +103,9 @@ def ws_onopen(ws):
         while True:
             if printstatus:
                 print_statusline(ws)
-            printstatus = True
+
+            printstatus = True          # Allow printing the statusline next time
+            ws.pause_output = False     # Allow arbitrary output again
             key = readchar.readkey()
 
             # # Oops, websocket is not connected but you asked for a command that requires websocket!
@@ -109,11 +113,13 @@ def ws_onopen(ws):
             #     print("No websocket connection")
             #     continue
 
+            ws.pause_output = True      # Disable output for the duration of input handling
+
             if key == "h":
                 for key, value in commands.items():
                     print(" " + Style.BRIGHT + key + Style.NORMAL + " - " + value)
             elif key == "s":
-                print("not yet")
+                search(ws)
             elif key == "g":
                 print("not yet")
             elif key == "u":
@@ -136,6 +142,7 @@ def ws_onopen(ws):
     # create a thread to run the blocking task
     thread = threading.Thread(target=main_loop)
     thread.start()
+
 
 def ws_onmessage(ws, message):
     pass
@@ -160,6 +167,19 @@ def load_or_create_global_config():
 
     myutils.set_logging_level(config["default_loglevel"])
 
+# Enter a search loop which will repeat until you quit. Output should be PAUSED here 
+# (but someone else does it for us, we don't even know what 'pausing' is)
+def search(ws):
+    while True:
+        searchterm = input("Search text (#ROOMNUM = set room, # to quit): ")
+        if searchterm == "#":
+            return
+        match = re.match(r'#(\d+)', searchterm)
+        if match:
+            digits = int(match.group(1))
+            
+            num = int(digits)
+            print(num)
 
 # Either pull the token from a file, or get the login from the command
 # line if that doesn't work. WILL test your token against the real API
@@ -196,7 +216,12 @@ def authenticate(config, context: contentapi.ApiContext):
 
 def print_statusline(ws):
     # if ws_context.connected: bg = Back.GREEN else: bg = Back.RED
-    print(Back.GREEN + Fore.BLACK + "\n User: " + ws.user_info["username"] + "  CTRL: h s g u i q  " + Style.RESET_ALL)
+    if ws.current_room:
+        name = ws.current_room_data["name"]
+        room = "'" + (name[:12] + '...' if len(name) > 15 else name) + "'"
+    else:
+        room = Fore.RED + Style.DIM + "NONE" + Style.NORMAL + Fore.BLACK
+    print(Back.GREEN + Fore.BLACK + "\n " + ws.user_info["username"] + " - " + room + "  CTRL: h s g u i q  " + Style.RESET_ALL)
 
 # Because python reasons
 if __name__ == "__main__":
